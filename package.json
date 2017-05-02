@@ -1,0 +1,16 @@
+{
+  "name": "form",
+  "version": "1.0.0",
+  "description": "用于form校验的框架",
+  "main": "index.js",
+  "repository": "https://github.com/zhipenglin/form.git",
+  "author": "linzhipeng <zhipeng.lin@ifchange.com>",
+  "license": "MIT",
+  "scripts": {
+    "test": "mocha"
+  },
+  "dependencies": {
+    "lodash": "^4.17.4",
+    "mocha": "^3.3.0"
+  }
+}
