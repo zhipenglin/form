@@ -14,7 +14,6 @@ const RULES={
         des:'请输入6-20位数字/字母'
     }
 };
-
 const EVENT_ALL=263;
 
 module.exports=class{
@@ -40,16 +39,17 @@ module.exports=class{
          * */
         this._middlewares={};
     }
-    getValidateResult(name,value,rule){
-        var cache=this._getCache(name,value);
+    getValidateResult(name,value,ruleStr){
+        var rule=this._getRule(ruleStr);
+        var cache=this._getCache(name,value,ruleStr);
         if(cache.status!==undefined){
-            return cache;
+            return Promise.resolve(cache);
         }
-        rule=this._getRule(rule);
         var returnResult=(result)=>{
             result.name=name;
             result.value=value;
-            cache.result=result;
+            result.rule=ruleStr;
+            this._setCache(result);
             if(result.status===true){
                 this._triggerEvent('pass', name, value);
             }else if(result.status===false&&result.loading===true){
@@ -142,9 +142,11 @@ module.exports=class{
         if(this._cache[name]){
             delete this._cache[name];
         }
+        return this;
     }
     clearAllCache(){
         this._cache={};
+        return this;
     }
     on(eventName,...args){
         var name=args[0],callback=args[args.length-1];
@@ -161,6 +163,7 @@ module.exports=class{
             this._events[eventName][name]=[];
         }
         this._events[eventName][name].push(callback);
+        return this;
     }
     off(eventName,name){
         if(name){
@@ -170,6 +173,7 @@ module.exports=class{
         }else{
             this._events[eventName]={};
         }
+        return this;
     }
     use(name,callback){
         if(typeof name!=='string'||typeof callback!=='function'){
@@ -180,21 +184,37 @@ module.exports=class{
             this._middlewares[name]=[];
         }
         this._middlewares[name].push(callback);
+        return this;
     }
-    _getCache(name,value){
-        var hashCode=(function(key){
-            //djb2HashCode
-            var hash=5381;
-            for(var i=0;i<key.length;i++){
-                hash=hash*33+key.charCodeAt(i);
-            }
-            return hash%1013;
-        })(JSON.stringify({[name]:value}));
+    _getCache(name,value,rule){
+        var hashCode=this._getCacheCode(name,value,rule);
         if(this._cache[hashCode]&&this._cache[hashCode].loading!==true){
             return this._cache[hashCode];
         }else{
             return {};
         }
+    }
+    _setCache(result){
+        var hashCode=this._getCacheCode(result.name,result.value,result.rule);
+        delete result['rule'];
+        this._cache[hashCode]=result;
+    }
+    _getCacheCode(name,value,rule){
+        if(typeof value=='object'){
+            value=JSON.stringify(value).replace(/[\{\}\[\]\"\:\,]/g,'');
+        }else{
+            value+='';
+        }
+        rule=rule.replace(/[\-\s]/g,'');
+        
+        return this._jsHashCode(rule+name+value);
+    }
+    _jsHashCode(key){
+        var hash=1315423911;
+        for(var i=0;i<key.length;i++){
+            hash^=(hash<<5)+key.charCodeAt(i)+(hash>>2);
+        }
+        return (hash & 0x7FFFFFFF);
     }
     _getRule(rule=''){
         if(this._ruleCache[rule]){
