@@ -10,7 +10,14 @@
     "test": "mocha"
   },
   "dependencies": {
+    "babel-plugin-external-helpers": "^6.22.0",
+    "babel-preset-latest": "^6.24.1",
+    "jquery": "^3.2.1",
     "lodash": "^4.17.4",
-    "mocha": "^3.3.0"
+    "mocha": "^3.3.0",
+    "rollup": "^0.41.6",
+    "rollup-plugin-babel": "^2.7.1",
+    "rollup-plugin-eslint": "^3.0.0",
+    "rollup-plugin-node-resolve": "^3.0.0"
   }
 }

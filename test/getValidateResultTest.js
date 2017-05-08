@@ -1,5 +1,5 @@
 var assert = require('assert');
-var Form=require('../src/index');
+var Form=require('../dist/form');
 describe('Form#getValidateResult()', function() {
     describe('必须性校验',function(){
         var form=new Form();

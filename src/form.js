@@ -1,4 +1,4 @@
-var _=require('lodash');
+import _ from 'lodash'
 
 const RULES={
     tel:{
@@ -16,8 +16,22 @@ const RULES={
 };
 const EVENT_ALL=263;
 
-module.exports=class{
+export default class{
     constructor(options){
+        this.options=this._merge({},{
+            reqErrorTemp:'%s不能为空',
+            lengthErrorTempFunc:function(start,end,type){
+                //type==1:必须等于 //type==2:必须大于 //type==3:必须小于
+                var msg={
+                    1:`%s必须为${start}个字符`,
+                    2:`%s必须大于${start}个字符`,
+                    3:`%s必须小于${end}个字符`
+                };
+                return msg[type];
+            },
+            rules:RULES
+        },options);
+
         /**
          * cache用来储存校验字段的当前校验状态，以便下次同一校验字段进行校验时直接从cache中取得校验结果
          * */
@@ -62,7 +76,7 @@ module.exports=class{
         //空性判断
         if(this._isEmpty(value)){
             if(rule.req){
-                return returnResult({status:false,msg:'%s不能为空'});
+                return returnResult({status:false,msg:this.options.reqErrorTemp});
             }else{
                 return returnResult(cache.result={status:true});
             }
@@ -70,19 +84,19 @@ module.exports=class{
         //长度判断
         if(value.length!=undefined&&rule.length&&rule.length.start){
             if(rule.length.start===rule.length.end&&value.length!==rule.length.start){
-                return returnResult({status:false,msg:`%s必须为${rule.length.start}个字符`});
+                return returnResult({status:false,msg:this.options.lengthErrorTempFunc(rule.length.start,rule.length.end,1)});
             }
             if(value.length<rule.length.start){
-                return returnResult({status:false,msg:`%s必须大于${rule.length.start}个字符`});
+                return returnResult({status:false,msg:this.options.lengthErrorTempFunc(rule.length.start,rule.length.end,2)});
             }
             if(rule.length.end&&value.length>rule.length.end){
-                return returnResult({status:false,msg:`%s必须小于${rule.length.end}个字符`});
+                return returnResult({status:false,msg:this.options.lengthErrorTempFunc(rule.length.start,rule.length.end,3)});
             }
         }
         //类型判断
         if(rule.type&&rule.type.length>0){
             for(let key of rule.type){
-                let ruleType=RULES[key];
+                let ruleType=this.options.rules[key];
                 if(ruleType&&ruleType.func&&typeof ruleType.func=='function'&&!ruleType.func(value)){
                     return returnResult({status:false,msg:ruleType.des});
                 }else if(ruleType&&ruleType.regExp&&ruleType.regExp instanceof RegExp&&!ruleType.regExp.test(value)){
@@ -199,7 +213,7 @@ module.exports=class{
         delete result['rule'];
         this._cache[hashCode]=result;
     }
-    _getCacheCode(name,value,rule){
+    _getCacheCode(name,value,rule=''){
         if(typeof value=='object'){
             value=JSON.stringify(value).replace(/[\{\}\[\]\"\:\,]/g,'');
         }else{
@@ -238,7 +252,7 @@ module.exports=class{
                         _rule.length=length;
                     }
                 }
-            }else if(RULES[n]){
+            }else if(this.options.rules[n]){
                 if(!_rule.type){
                     _rule.type=[];
                 }
@@ -266,5 +280,8 @@ module.exports=class{
     }
     _every(array,callback){
         return _.every(array,callback);
+    }
+    _merge(...args){
+        return _.merge(...args);
     }
 }

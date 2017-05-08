@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <div class="form">
+        <input class="J_form-field" type="text" name="user_name" label="用户名" rule="req 5-20">
+        <div class="J_form-msg_user_name"></div>
+        <button type="button" class="submit">提交</button>
+    </div>
+</body>
+<script src="https://cdn.staticfile.org/jquery/3.2.1/jquery.min.js"></script>
+<script src="https://cdn.staticfile.org/lodash.js/4.17.4/lodash.min.js"></script>
+<script src="../dist/jquery.form.js"></script>
+<script>
+    var form=$('.form').form();
+    $('.submit').click(function(){
+        form.submit(function(data){
+            console.log(data);
+        });
+    });
+</script>
+</html>

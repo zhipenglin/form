@@ -1,5 +1,5 @@
 var assert = require('assert');
-var Form=require('../src/index');
+var Form=require('../dist/form');
 
 describe('Form#getFormValidateResult()',function(){
     describe('不包含用户自定义校验的简单校验',function(){

@@ -1,5 +1,5 @@
 var assert = require('assert');
-var Form=require('../src/index');
+var Form=require('../dist/form');
 
 describe('Form#_getCache()',function(){
     var form=new Form();
