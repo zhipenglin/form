@@ -1,4 +1,4 @@
-# Form
+# Form [详细文档](https://zhipenglin.github.io/form/docs)
 
 ## 特性
 * UI逻辑与验证逻辑完全分离，UI逻辑可以根据需求灵活定制，可以进行jquery，react等多种UI框架或场景的适配
