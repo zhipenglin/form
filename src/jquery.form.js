@@ -17,6 +17,9 @@ class JForm {
      * @param {function} options.callback 提交表单即调用submit方法时，表单所有字段验证通过调用该方法，参数为表单的值
      * @param {number} options.delayTime 用户连续输入间隔多久进行下一次校验
      * @param {bool} options.realTimeError 是否实时显示错误信息
+     * @param {Object} options.rules 自定义校验规则 参考Form里的相同参数
+     * @param {string} options.reqErrorTemp 空错误错误信息模版 参考Form里的相同参数
+     * @param {function} options.lengthErrorTempFunc 长度校验错误信息模版方法 参考Form里的相同参数
      * */
     constructor($el,options){
         this.$el=$($el);
