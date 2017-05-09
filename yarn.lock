@@ -677,6 +677,10 @@ diff@3.2.0:
   version "3.2.0"
   resolved "http://registry.npm.taobao.org/diff/download/diff-3.2.0.tgz#c9ce393a4b7cbd0b058a725c93df299027868ff9"
 
+docdash@^0.4.0:
+  version "0.4.0"
+  resolved "http://registry.npm.taobao.org/docdash/download/docdash-0.4.0.tgz#05c3a50d83189981699ee0c076d3a3950db7ec00"
+
 doctrine@^2.0.0:
   version "2.0.0"
   resolved "http://registry.npm.taobao.org/doctrine/download/doctrine-2.0.0.tgz#c73d8d2909d22291e1a007a395804da8b665fe63"

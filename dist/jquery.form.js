@@ -45,9 +45,17 @@ var RULES = {
 };
 var EVENT_ALL = 263;
 
-var _class = function () {
-    function _class(options) {
-        classCallCheck(this, _class);
+/**
+ * 表单验证的主要逻辑
+ * */
+
+var Form = function () {
+    /**
+     * Create 一个表单
+     * @param {object} options 表单验证配置信息
+     * */
+    function Form(options) {
+        classCallCheck(this, Form);
 
         this.options = this._merge({}, {
             reqErrorTemp: '%s不能为空',
@@ -84,8 +92,13 @@ var _class = function () {
          * */
         this._middlewares = {};
     }
+    /**
+     * Get 主要验证逻辑
+     * @return {object} 一个promise对象
+     * */
 
-    _class.prototype.getValidateResult = function getValidateResult(name, value, ruleStr) {
+
+    Form.prototype.getValidateResult = function getValidateResult(name, value, ruleStr) {
         var _this = this;
 
         var rule = this._getRule(ruleStr);
@@ -177,7 +190,7 @@ var _class = function () {
         }
     };
 
-    _class.prototype.getFormValidateResult = function getFormValidateResult(dataArray) {
+    Form.prototype.getFormValidateResult = function getFormValidateResult(dataArray) {
         var _this2 = this;
 
         return Promise.all(dataArray.map(function (field) {
@@ -185,7 +198,7 @@ var _class = function () {
         }));
     };
 
-    _class.prototype.isError = function isError(name) {
+    Form.prototype.isError = function isError(name) {
         if (name) {
             return this._cache[name].status === false && this._cache[name].loading !== true;
         }
@@ -194,7 +207,7 @@ var _class = function () {
         });
     };
 
-    _class.prototype.isLoading = function isLoading(name) {
+    Form.prototype.isLoading = function isLoading(name) {
         if (name) {
             return this._cache[name].status === false && this._cache[name].loading === true;
         }
@@ -203,7 +216,7 @@ var _class = function () {
         });
     };
 
-    _class.prototype.isPass = function isPass(name) {
+    Form.prototype.isPass = function isPass(name) {
         if (name) {
             return this._cache[name].status === true;
         }
@@ -212,19 +225,19 @@ var _class = function () {
         });
     };
 
-    _class.prototype.clearFieldCache = function clearFieldCache(name) {
+    Form.prototype.clearFieldCache = function clearFieldCache(name) {
         if (this._cache[name]) {
             delete this._cache[name];
         }
         return this;
     };
 
-    _class.prototype.clearAllCache = function clearAllCache() {
+    Form.prototype.clearAllCache = function clearAllCache() {
         this._cache = {};
         return this;
     };
 
-    _class.prototype.on = function on(eventName) {
+    Form.prototype.on = function on(eventName) {
         var _ref2;
 
         var name = arguments.length <= 1 ? undefined : arguments[1],
@@ -245,7 +258,7 @@ var _class = function () {
         return this;
     };
 
-    _class.prototype.off = function off(eventName, name) {
+    Form.prototype.off = function off(eventName, name) {
         if (name) {
             if (this._events[eventName][name]) {
                 this._events[eventName][name] = [];
@@ -256,7 +269,7 @@ var _class = function () {
         return this;
     };
 
-    _class.prototype.use = function use(name, callback) {
+    Form.prototype.use = function use(name, callback) {
         if (typeof name !== 'string' || typeof callback !== 'function') {
             return;
         }
@@ -268,7 +281,7 @@ var _class = function () {
         return this;
     };
 
-    _class.prototype._getCache = function _getCache(name, value, rule) {
+    Form.prototype._getCache = function _getCache(name, value, rule) {
         var hashCode = this._getCacheCode(name, value, rule);
         if (this._cache[hashCode] && this._cache[hashCode].loading !== true) {
             return this._cache[hashCode];
@@ -277,13 +290,13 @@ var _class = function () {
         }
     };
 
-    _class.prototype._setCache = function _setCache(result) {
+    Form.prototype._setCache = function _setCache(result) {
         var hashCode = this._getCacheCode(result.name, result.value, result.rule);
         delete result['rule'];
         this._cache[hashCode] = result;
     };
 
-    _class.prototype._getCacheCode = function _getCacheCode(name, value) {
+    Form.prototype._getCacheCode = function _getCacheCode(name, value) {
         var rule = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : '';
 
         if ((typeof value === 'undefined' ? 'undefined' : _typeof(value)) == 'object') {
@@ -296,7 +309,7 @@ var _class = function () {
         return this._jsHashCode(rule + name + value);
     };
 
-    _class.prototype._jsHashCode = function _jsHashCode(key) {
+    Form.prototype._jsHashCode = function _jsHashCode(key) {
         var hash = 1315423911;
         for (var i = 0; i < key.length; i++) {
             hash ^= (hash << 5) + key.charCodeAt(i) + (hash >> 2);
@@ -304,7 +317,7 @@ var _class = function () {
         return hash & 0x7FFFFFFF;
     };
 
-    _class.prototype._getRule = function _getRule() {
+    Form.prototype._getRule = function _getRule() {
         var _this3 = this;
 
         var rule = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '';
@@ -343,15 +356,15 @@ var _class = function () {
         return this._ruleCache[rule] = _rule;
     };
 
-    _class.prototype._isEmpty = function _isEmpty(value) {
+    Form.prototype._isEmpty = function _isEmpty(value) {
         return value === undefined || value === null || value === '' || value.length == 0 || this._isEmptyObject(value);
     };
 
-    _class.prototype._isEmptyObject = function _isEmptyObject(value) {
+    Form.prototype._isEmptyObject = function _isEmptyObject(value) {
         return _.isObject(value) && _.isEmpty(value);
     };
 
-    _class.prototype._triggerEvent = function _triggerEvent(eventType, name, value) {
+    Form.prototype._triggerEvent = function _triggerEvent(eventType, name, value) {
         if (this._events[eventType]) {
             if (this._events[eventType][name]) {
                 this._events[eventType][name](value, eventType, name);
@@ -360,19 +373,19 @@ var _class = function () {
         }
     };
 
-    _class.prototype._find = function _find(array, callback) {
+    Form.prototype._find = function _find(array, callback) {
         return _.find(array, callback);
     };
 
-    _class.prototype._every = function _every(array, callback) {
+    Form.prototype._every = function _every(array, callback) {
         return _.every(array, callback);
     };
 
-    _class.prototype._merge = function _merge() {
+    Form.prototype._merge = function _merge() {
         return _.merge.apply(_, arguments);
     };
 
-    return _class;
+    return Form;
 }();
 
 var JForm = function () {
@@ -386,9 +399,11 @@ var JForm = function () {
             msgClass: 'J_form-msg',
             errorClass: 'form-error',
             nullError: false,
-            callback: null
+            callback: null,
+            delayTime: 500,
+            realTimeError: true
         }, options);
-        this._form = new _class({
+        this._form = new Form({
             rules: this.options.rules,
             reqErrorTemp: this.options.reqErrorTemp,
             lengthErrorTempFunc: this.options.lengthErrorTempFunc
@@ -489,8 +504,18 @@ var JForm = function () {
             _this.validate(this).then(function (result) {
                 _this.setError(result);
             });
-        }).on('input', '.' + this.options.fieldClass, function () {
-            _this.validate(this);
+        }).on('input', '.' + this.options.fieldClass, _.debounce(function () {
+            var res = _this.validate(this);
+            if (_this.options.realTimeError) {
+                res.then(function (result) {
+                    _this.setError(result);
+                });
+            }
+        }, this.options.delayTime)).on('focus', '.' + this.options.fieldClass, function () {
+            _this.setError({
+                status: true,
+                name: $(this).attr('name')
+            });
         });
     };
 

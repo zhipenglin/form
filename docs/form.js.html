@@ -1,4 +1,43 @@
-import _ from 'lodash'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>form.js - Documentation</title>
+
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Form.html">Form</a><ul class='methods'><li data-type='method'><a href="Form.html#clearAllCache">clearAllCache</a></li><li data-type='method'><a href="Form.html#clearFieldCache">clearFieldCache</a></li><li data-type='method'><a href="Form.html#getFormValidateResult">getFormValidateResult</a></li><li data-type='method'><a href="Form.html#getValidateResult">getValidateResult</a></li><li data-type='method'><a href="Form.html#isError">isError</a></li><li data-type='method'><a href="Form.html#isLoading">isLoading</a></li><li data-type='method'><a href="Form.html#isPass">isPass</a></li><li data-type='method'><a href="Form.html#off">off</a></li><li data-type='method'><a href="Form.html#on">on</a></li><li data-type='method'><a href="Form.html#use">use</a></li></ul></li><li><a href="JForm.html">JForm</a><ul class='methods'><li data-type='method'><a href="JForm.html#isError">isError</a></li><li data-type='method'><a href="JForm.html#isLoading">isLoading</a></li><li data-type='method'><a href="JForm.html#isPass">isPass</a></li><li data-type='method'><a href="JForm.html#on">on</a></li><li data-type='method'><a href="JForm.html#setError">setError</a></li><li data-type='method'><a href="JForm.html#submit">submit</a></li><li data-type='method'><a href="JForm.html#use">use</a></li><li data-type='method'><a href="JForm.html#validate">validate</a></li></ul></li></ul>
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">form.js</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import _ from 'lodash'
 
 const RULES={
     tel:{
@@ -21,11 +60,11 @@ const EVENT_ALL=263;
  * */
 class Form{
     /**
-     * 创建一个表单管理<br>
+     * 创建一个表单管理&lt;br>
      *
      * 注意：lengthErrorTempFunc为一个方法，返回一个错误信息模版
-     * <br>自定义验证规则rules里面func和regExp同时存在时执行func，忽略regExp
-     * <br>自定义验证规则rules里面func返回一个boolean的结果
+     * &lt;br>自定义验证规则rules里面func和regExp同时存在时执行func，忽略regExp
+     * &lt;br>自定义验证规则rules里面func返回一个boolean的结果
      * @param {object} options 表单验证配置信息
      * @param {string} options.reqErrorTemp 空错误错误信息模版
      * @param {function} options.lengthErrorTempFunc 长度校验错误信息模版方法
@@ -104,7 +143,7 @@ class Form{
             this._setCache(result);
             if(result.status===true){
                 this._triggerEvent('pass', name, value);
-            }else if(result.status===false&&result.loading===true){
+            }else if(result.status===false&amp;&amp;result.loading===true){
                 this._triggerEvent('loading', name, value);
             }else{
                 this._triggerEvent('error', name, value);
@@ -120,31 +159,31 @@ class Form{
             }
         }
         //长度判断
-        if(value.length!=undefined&&rule.length&&rule.length.start){
-            if(rule.length.start===rule.length.end&&value.length!==rule.length.start){
+        if(value.length!=undefined&amp;&amp;rule.length&amp;&amp;rule.length.start){
+            if(rule.length.start===rule.length.end&amp;&amp;value.length!==rule.length.start){
                 return returnResult({status:false,msg:this.options.lengthErrorTempFunc(rule.length.start,rule.length.end,1)});
             }
-            if(value.length<rule.length.start){
+            if(value.length&lt;rule.length.start){
                 return returnResult({status:false,msg:this.options.lengthErrorTempFunc(rule.length.start,rule.length.end,2)});
             }
-            if(rule.length.end&&value.length>rule.length.end){
+            if(rule.length.end&amp;&amp;value.length>rule.length.end){
                 return returnResult({status:false,msg:this.options.lengthErrorTempFunc(rule.length.start,rule.length.end,3)});
             }
         }
         //类型判断
-        if(rule.type&&rule.type.length>0){
+        if(rule.type&amp;&amp;rule.type.length>0){
             for(let key of rule.type){
                 let ruleType=this.options.rules[key];
-                if(ruleType&&ruleType.func&&typeof ruleType.func=='function'&&!ruleType.func(value)){
+                if(ruleType&amp;&amp;ruleType.func&amp;&amp;typeof ruleType.func=='function'&amp;&amp;!ruleType.func(value)){
                     return returnResult({status:false,msg:ruleType.des});
-                }else if(ruleType&&ruleType.regExp&&ruleType.regExp instanceof RegExp&&!ruleType.regExp.test(value)){
+                }else if(ruleType&amp;&amp;ruleType.regExp&amp;&amp;ruleType.regExp instanceof RegExp&amp;&amp;!ruleType.regExp.test(value)){
                     return returnResult({status:false,msg:ruleType.des});
                 }
             }
         }
         //用户自定义规则判断
         var extraList=this._middlewares[name];
-        if(extraList&&extraList.length>0) {
+        if(extraList&amp;&amp;extraList.length>0) {
             returnResult({status:false,loading:true});
             return Promise.all(extraList.map((extra)=>{
                 if(typeof extra=='function'){
@@ -184,9 +223,9 @@ class Form{
      * */
     isError(name){
         if(name){
-            return this._cache[name].status===false&&this._cache[name].loading!==true;
+            return this._cache[name].status===false&amp;&amp;this._cache[name].loading!==true;
         }
-        return this._find(this._cache,(result)=>result.status===false&&result.loading!==true);
+        return this._find(this._cache,(result)=>result.status===false&amp;&amp;result.loading!==true);
     }
     /**
      * 判断当前表单中是否存在正在进行远程校验，如果传入参数值name，则判断当前字段验证是否正在进行远程校验
@@ -195,9 +234,9 @@ class Form{
      * */
     isLoading(name){
         if(name){
-            return this._cache[name].status===false&&this._cache[name].loading===true;
+            return this._cache[name].status===false&amp;&amp;this._cache[name].loading===true;
         }
-        return this._find(this._cache,(result)=>result.status===false&&result.loading===true);
+        return this._find(this._cache,(result)=>result.status===false&amp;&amp;result.loading===true);
     }
     /**
      * 判断当前表单中的全部字段是否全都验证通过，如果传入参数值name，则判断当前字段验证是否验证通过
@@ -288,7 +327,7 @@ class Form{
     }
     _getCache(name,value,rule){
         var hashCode=this._getCacheCode(name,value,rule);
-        if(this._cache[hashCode]&&this._cache[hashCode].loading!==true){
+        if(this._cache[hashCode]&amp;&amp;this._cache[hashCode].loading!==true){
             return this._cache[hashCode];
         }else{
             return {};
@@ -311,10 +350,10 @@ class Form{
     }
     _jsHashCode(key){
         var hash=1315423911;
-        for(var i=0;i<key.length;i++){
-            hash^=(hash<<5)+key.charCodeAt(i)+(hash>>2);
+        for(var i=0;i&lt;key.length;i++){
+            hash^=(hash&lt;&lt;5)+key.charCodeAt(i)+(hash>>2);
         }
-        return (hash & 0x7FFFFFFF);
+        return (hash &amp; 0x7FFFFFFF);
     }
     _getRule(rule=''){
         if(this._ruleCache[rule]){
@@ -330,7 +369,7 @@ class Form{
                     let length={start:parseInt(start)};
                     if(end){
                         end=parseInt(end);
-                        if(start<=end){
+                        if(start&lt;=end){
                             length.end=end;
                             _rule.length=length;
                         }
@@ -351,7 +390,7 @@ class Form{
         return value===undefined||value===null||value===''||value.length==0||this._isEmptyObject(value);
     }
     _isEmptyObject(value) {
-        return _.isObject(value)&&_.isEmpty(value);
+        return _.isObject(value)&amp;&amp;_.isEmpty(value);
     }
     _triggerEvent(eventType,name,value){
         if(this._events[eventType]){
@@ -372,4 +411,22 @@ class Form{
     }
 }
 
-export default Form;
+export default Form;</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> on Tue May 09 2017 15:32:20 GMT+0800 (CST) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/linenumber.js"></script>
+</body>
+</html>
