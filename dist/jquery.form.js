@@ -51,12 +51,29 @@ var EVENT_ALL = 263;
 
 var Form = function () {
     /**
-     * Create 一个表单
+     * 创建一个表单管理<br>
+     *
+     * 注意：lengthErrorTempFunc为一个方法，返回一个错误信息模版
+     * <br>自定义验证规则rules里面func和regExp同时存在时执行func，忽略regExp
+     * <br>自定义验证规则rules里面func返回一个boolean的结果
      * @param {object} options 表单验证配置信息
+     * @param {string} options.reqErrorTemp 空错误错误信息模版
+     * @param {function} options.lengthErrorTempFunc 长度校验错误信息模版方法
+     * @param {number} options.lengthErrorTempFunc.start 最小长度
+     * @param {number} options.lengthErrorTempFunc.end 最大长度
+     * @param {number} options.lengthErrorTempFunc.type 模版类型
+     * @param {object} options.rules 自定义规则
+     * @param {object} options.rules.key 规则名称
+     * @param {RegExp} options.rules.regExp 验证规则，正则表达式
+     * @param {string} options.rules.des 描述，当验证不通过时的错误信息模版
+     * @param {function} options.rules.func 验证规则，执行后返回验证结果
      * */
     function Form(options) {
         classCallCheck(this, Form);
 
+        /**
+         * 将options里的配置参数和默认的配置参数merge后的最终参数
+         * */
         this.options = this._merge({}, {
             reqErrorTemp: '%s不能为空',
             lengthErrorTempFunc: function lengthErrorTempFunc(start, end, type) {
@@ -72,29 +89,39 @@ var Form = function () {
         }, options);
 
         /**
-         * cache用来储存校验字段的当前校验状态，以便下次同一校验字段进行校验时直接从cache中取得校验结果
+         * 用来储存校验字段的当前校验状态，以便下次同一校验字段进行校验时直接从cache中取得校验结果
+         * @private
          * */
         this._cache = {};
+        /**
+         * 用来缓存校验规则的解析结果
+         * @private
+         * */
         this._ruleCache = {};
         /**
-         * events用来储存使用者对表单校验状态改变事件的监听的回调函数
-         *
+         * 用来储存使用者对表单校验状态改变事件的监听的回调函数
+         * @deprecated
          * event type说明:
          *
          * 1.all所有类型都执行回调函数
          * 2.error校验中出现校验不通过情况，触发该事件，返回错误提示字符串，终止该字段的剩余校验过程
          * 3.loading校验字段中存在用户自定义校验，并且调用用户自定义校验函数返回promise对象，触发该事件
          * 4.pass执行校验的字段完成了所有的校验，并且全部通过校验
+         * @private
          * */
         this._events = {};
         /**
          * middlewares用来储存使用者追加自定义表单校验规则的回调函数
+         * @private
          * */
         this._middlewares = {};
     }
     /**
-     * Get 主要验证逻辑
-     * @return {object} 一个promise对象
+     * 对字段进行校验
+     * @param {string} name 字段名
+     * @param {all} value 被校验字段的值
+     * @param {string} ruleStr 校验规则表达式
+     * @return {Promise} promise对象,验证结果如：promise.then((result)=>{})
      * */
 
 
@@ -189,6 +216,12 @@ var Form = function () {
             return returnResult({ status: true });
         }
     };
+    /**
+     * 对一组值调用getValidateResult进行校验
+     * @param {Array} dataArray 一组被校验值，格式如getValidateResult
+     * @return {Array} promise对象数组
+     * */
+
 
     Form.prototype.getFormValidateResult = function getFormValidateResult(dataArray) {
         var _this2 = this;
@@ -197,6 +230,12 @@ var Form = function () {
             return _this2.getValidateResult(field.name, field.value, field.rule);
         }));
     };
+    /**
+     * 判断当前表单中是否存在验证不通过字段，如果传入参数值name，则判断当前字段验证是否不通过
+     * @param {string} name 字段名
+     * @return {bool} 字段是否验证不通过
+     * */
+
 
     Form.prototype.isError = function isError(name) {
         if (name) {
@@ -206,6 +245,12 @@ var Form = function () {
             return result.status === false && result.loading !== true;
         });
     };
+    /**
+     * 判断当前表单中是否存在正在进行远程校验，如果传入参数值name，则判断当前字段验证是否正在进行远程校验
+     * @param {string} name 字段名
+     * @return {bool} 字段是否正在进行远程校验
+     * */
+
 
     Form.prototype.isLoading = function isLoading(name) {
         if (name) {
@@ -215,6 +260,12 @@ var Form = function () {
             return result.status === false && result.loading === true;
         });
     };
+    /**
+     * 判断当前表单中的全部字段是否全都验证通过，如果传入参数值name，则判断当前字段验证是否验证通过
+     * @param {string} name 字段名
+     * @return {bool} 字段是否验证通过
+     * */
+
 
     Form.prototype.isPass = function isPass(name) {
         if (name) {
@@ -224,6 +275,12 @@ var Form = function () {
             return result.status === true;
         });
     };
+    /**
+     * 清除当前字段有关的验证缓存
+     * @param {string} name 字段名
+     * @return {Form} Form对象本身
+     * */
+
 
     Form.prototype.clearFieldCache = function clearFieldCache(name) {
         if (this._cache[name]) {
@@ -231,11 +288,24 @@ var Form = function () {
         }
         return this;
     };
+    /**
+     * 清除所有字段有关的验证缓存
+     * @return {Form} Form对象本身
+     * */
+
 
     Form.prototype.clearAllCache = function clearAllCache() {
         this._cache = {};
         return this;
     };
+    /**
+     * 添加事件绑定
+     * @param {string} eventName 事件名称 pass：字段验证通过事件 loading：字段开始进行远程校验 error：字段校验不通过
+     * @param {string} name 字段名称（可选）
+     * @param {function} callback 事件触发后回调
+     * @return {Form} Form对象本身
+     * */
+
 
     Form.prototype.on = function on(eventName) {
         var _ref2;
@@ -257,6 +327,13 @@ var Form = function () {
         this._events[eventName][name].push(callback);
         return this;
     };
+    /**
+     * 取消事件绑定
+     * @param {string} eventName 事件名称 pass：字段验证通过事件 loading：字段开始进行远程校验 error：字段校验不通过
+     * @param {string} name 字段名称（可选）
+     * @return {Form} Form对象本身
+     * */
+
 
     Form.prototype.off = function off(eventName, name) {
         if (name) {
@@ -268,6 +345,13 @@ var Form = function () {
         }
         return this;
     };
+    /**
+     * 追加字段的远程校验
+     * @param {string} name 字段名称，
+     * @param {function} callback 回调函数接受字段的值，返回一个验证结果对象或true
+     * @return {Form} Form对象本身
+     * */
+
 
     Form.prototype.use = function use(name, callback) {
         if (typeof name !== 'string' || typeof callback !== 'function') {
@@ -388,7 +472,26 @@ var Form = function () {
     return Form;
 }();
 
+/**
+ * 用于jquery的UI逻辑封装
+ * */
+
 var JForm = function () {
+    /**
+     * @param {Element} $el 被绑定的元素
+     * @param {Object} options 配置参数
+     * @param {string} options.fieldClass 字段选择器，用来标识一个字段
+     * @param {string} options.containerClass 字段容器选择器，用来标识字段容器，字段校验状态会添加到字段容器上
+     * @param {string} options.msgClass 字段错误信息容器选择器，用来标识字段错误信息容器，字段验证后的错误信息会显示在字段错误信息容器里面
+     * @param {string} options.errorClass 字段错误状态标识，用来把错误状态添加到字段容器上
+     * @param {bool} options.nullError 未提交表单时是否认为空状态是错误
+     * @param {function} options.callback 提交表单即调用submit方法时，表单所有字段验证通过调用该方法，参数为表单的值
+     * @param {number} options.delayTime 用户连续输入间隔多久进行下一次校验
+     * @param {bool} options.realTimeError 是否实时显示错误信息
+     * @param {Object} options.rules 自定义校验规则 参考Form里的相同参数
+     * @param {string} options.reqErrorTemp 空错误错误信息模版 参考Form里的相同参数
+     * @param {function} options.lengthErrorTempFunc 长度校验错误信息模版方法 参考Form里的相同参数
+     * */
     function JForm($el, options) {
         classCallCheck(this, JForm);
 
@@ -410,6 +513,12 @@ var JForm = function () {
         });
         this._bindEvent();
     }
+    /**
+     * 提交表单，如果有没有验证的字段则进行校验，所有字段均被校验并且全部都验证通过后执行options.callback，如果callback参数存在则执行callback，不执行options.callback
+     * @param {function} callback 所有字段验证通过后调用该方法
+     * @return {JForm} JForm对象
+     * */
+
 
     JForm.prototype.submit = function submit(callback) {
         var _this2 = this;
@@ -435,7 +544,14 @@ var JForm = function () {
                 }
             }
         });
+        return this;
     };
+    /**
+     * 根据验证结果，向某个字段写入显示状态
+     * @param {Object} result 验证结果对象
+     * @return {JForm} JForm对象
+     * */
+
 
     JForm.prototype.setError = function setError(result) {
         var $outer = this.$el.find('.' + this.options.containerClass + '_' + result.name),
@@ -452,7 +568,13 @@ var JForm = function () {
             $outer.addClass(this.options.errorClass);
             $msg.html(result.msg.replace('%s', label || '该字段'));
         }
+        return this;
     };
+    /**
+     * 同Form.prototype.use
+     * @return {JForm} JForm对象
+     * */
+
 
     JForm.prototype.use = function use() {
         var _form;
@@ -460,6 +582,11 @@ var JForm = function () {
         (_form = this._form).use.apply(_form, arguments);
         return this;
     };
+    /**
+     * 同Form.prototype.on
+     * @return {JForm} JForm对象
+     * */
+
 
     JForm.prototype.on = function on() {
         var _form2;
@@ -467,18 +594,36 @@ var JForm = function () {
         (_form2 = this._form).on.apply(_form2, arguments);
         return this;
     };
+    /**
+     * 同Form.prototype.isLoading
+     * */
+
 
     JForm.prototype.isLoading = function isLoading(name) {
         return this._form.isLoading(name);
     };
+    /**
+     * 同Form.prototype.isError
+     * */
+
 
     JForm.prototype.isError = function isError(name) {
         return this._form.isError(name);
     };
+    /**
+     * 同Form.prototype.isPass
+     * */
+
 
     JForm.prototype.isPass = function isPass(name) {
         return this._form.isPass(name);
     };
+    /**
+     * 对一个字段进行验证
+     * @param {Element} target 字段元素
+     * @return {Object} 验证结果对象
+     * */
+
 
     JForm.prototype.validate = function validate(target) {
         var $target = $(target);
@@ -521,6 +666,11 @@ var JForm = function () {
 
     return JForm;
 }();
+
+/**
+ * 注册jquery插件
+ * */
+
 
 $.fn.form = function (options) {
     if ($(this).length == 0) {
