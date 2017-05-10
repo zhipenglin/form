@@ -14,7 +14,7 @@ const RULES={
         des:'请输入6-20位数字/字母'
     }
 };
-const EVENT_ALL=263;
+const EVENT_ALL='all_event_263';
 
 /**
  * 表单验证的主要逻辑
@@ -62,6 +62,11 @@ class Form{
          * */
         this._cache={};
         /**
+         * 用来存储验证结果
+         * 1为已通过 2为正在校验 3为校验失败
+         * */
+        this._result={};
+        /**
          * 用来缓存校验规则的解析结果
          * @private
          * */
@@ -98,18 +103,25 @@ class Form{
             return Promise.resolve(cache);
         }
         var returnResult=(result)=>{
-            result.name=name;
-            result.value=value;
-            result.rule=ruleStr;
-            this._setCache(result);
-            if(result.status===true){
-                this._triggerEvent('pass', name, value);
-            }else if(result.status===false&&result.loading===true){
-                this._triggerEvent('loading', name, value);
+            if(result.loading===true){
+                if(result.status===true){
+                    this._triggerEvent('loaded', name, value);
+                }else{
+                    this._result[name]=2;
+                    this._triggerEvent('loading', name, value);
+                }
             }else{
-                this._triggerEvent('error', name, value);
+                let cache={status:result.status,name,value,msg:result.msg,rule:ruleStr};
+                this._setCache(cache);
+                if(result.status===true){
+                    this._result[name]=1;
+                    this._triggerEvent('pass', name, value);
+                }else{
+                    this._result[name]=3;
+                    this._triggerEvent('error', name, value);
+                }
+                return Promise.resolve(cache);
             }
-            return Promise.resolve(result);
         };
         //空性判断
         if(this._isEmpty(value)){
@@ -162,6 +174,9 @@ class Form{
                 return returnResult({status:true});
             },(result)=>{
                 return returnResult(result);
+            }).then((result)=>{
+                returnResult({status:true,loading:true});
+                return result;
             });
         }else{
             return returnResult({status:true});
@@ -184,9 +199,9 @@ class Form{
      * */
     isError(name){
         if(name){
-            return this._cache[name].status===false&&this._cache[name].loading!==true;
+            return this._result[name]===3;
         }
-        return this._find(this._cache,(result)=>result.status===false&&result.loading!==true);
+        return this._some(this._result,(result)=>result===3);
     }
     /**
      * 判断当前表单中是否存在正在进行远程校验，如果传入参数值name，则判断当前字段验证是否正在进行远程校验
@@ -195,9 +210,9 @@ class Form{
      * */
     isLoading(name){
         if(name){
-            return this._cache[name].status===false&&this._cache[name].loading===true;
+            return this._result[name]===2;
         }
-        return this._find(this._cache,(result)=>result.status===false&&result.loading===true);
+        return this._some(this._result,(result)=>result===2);
     }
     /**
      * 判断当前表单中的全部字段是否全都验证通过，如果传入参数值name，则判断当前字段验证是否验证通过
@@ -206,9 +221,9 @@ class Form{
      * */
     isPass(name){
         if(name){
-            return this._cache[name].status===true;
+            return this._result[name]===1;
         }
-        return this._every(this._cache,(result)=>result.status===true);
+        return this._every(this._result,(result)=>result===1);
     }
     /**
      * 清除当前字段有关的验证缓存
@@ -244,13 +259,17 @@ class Form{
         if(typeof callback!=='function'){
             return;
         }
-        if(!this._events[eventName]){
-            this._events[eventName]={};
-        }
-        if(!this._events[eventName][name]){
-            this._events[eventName][name]=[];
-        }
-        this._events[eventName][name].push(callback);
+        eventName.split(' ').forEach((eventName)=>{
+            if(!this._events[eventName]){
+                this._events[eventName]={};
+            }
+            name.split(' ').forEach((name)=>{
+                if(!this._events[eventName][name]){
+                    this._events[eventName][name]=[];
+                }
+                this._events[eventName][name].push(callback);
+            });
+        });
         return this;
     }
     /**
@@ -288,7 +307,7 @@ class Form{
     }
     _getCache(name,value,rule){
         var hashCode=this._getCacheCode(name,value,rule);
-        if(this._cache[hashCode]&&this._cache[hashCode].loading!==true){
+        if(this._cache[hashCode]){
             return this._cache[hashCode];
         }else{
             return {};
@@ -356,13 +375,15 @@ class Form{
     _triggerEvent(eventType,name,value){
         if(this._events[eventType]){
             if(this._events[eventType][name]){
-                this._events[eventType][name](value,eventType,name);
-                this._events[eventType][EVENT_ALL](value,eventType,name);
+                this._events[eventType][name].forEach((func)=>func(value,eventType,name));
+            }
+            if(this._events[eventType][EVENT_ALL]){
+                this._events[eventType][EVENT_ALL].forEach((func)=>func(value,eventType,name));
             }
         }
     }
-    _find(array,callback){
-       return _.find(array,callback);
+    _some(array,callback){
+       return _.some(array,callback);
     }
     _every(array,callback){
         return _.every(array,callback);

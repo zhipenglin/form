@@ -43,7 +43,7 @@ var RULES = {
         des: '请输入6-20位数字/字母'
     }
 };
-var EVENT_ALL = 263;
+var EVENT_ALL = 'all_event_263';
 
 /**
  * 表单验证的主要逻辑
@@ -94,6 +94,11 @@ var Form = function () {
          * */
         this._cache = {};
         /**
+         * 用来存储验证结果
+         * 1为已通过 2为正在校验 3为校验失败
+         * */
+        this._result = {};
+        /**
          * 用来缓存校验规则的解析结果
          * @private
          * */
@@ -134,18 +139,25 @@ var Form = function () {
             return Promise.resolve(cache);
         }
         var returnResult = function returnResult(result) {
-            result.name = name;
-            result.value = value;
-            result.rule = ruleStr;
-            _this._setCache(result);
-            if (result.status === true) {
-                _this._triggerEvent('pass', name, value);
-            } else if (result.status === false && result.loading === true) {
-                _this._triggerEvent('loading', name, value);
+            if (result.loading === true) {
+                if (result.status === true) {
+                    _this._triggerEvent('loaded', name, value);
+                } else {
+                    _this._result[name] = 2;
+                    _this._triggerEvent('loading', name, value);
+                }
             } else {
-                _this._triggerEvent('error', name, value);
+                var _cache = { status: result.status, name: name, value: value, msg: result.msg, rule: ruleStr };
+                _this._setCache(_cache);
+                if (result.status === true) {
+                    _this._result[name] = 1;
+                    _this._triggerEvent('pass', name, value);
+                } else {
+                    _this._result[name] = 3;
+                    _this._triggerEvent('error', name, value);
+                }
+                return Promise.resolve(_cache);
             }
-            return Promise.resolve(result);
         };
         //空性判断
         if (this._isEmpty(value)) {
@@ -211,6 +223,9 @@ var Form = function () {
                 return returnResult({ status: true });
             }, function (result) {
                 return returnResult(result);
+            }).then(function (result) {
+                returnResult({ status: true, loading: true });
+                return result;
             });
         } else {
             return returnResult({ status: true });
@@ -239,10 +254,10 @@ var Form = function () {
 
     Form.prototype.isError = function isError(name) {
         if (name) {
-            return this._cache[name].status === false && this._cache[name].loading !== true;
+            return this._result[name] === 3;
         }
-        return this._find(this._cache, function (result) {
-            return result.status === false && result.loading !== true;
+        return this._some(this._result, function (result) {
+            return result === 3;
         });
     };
     /**
@@ -254,10 +269,10 @@ var Form = function () {
 
     Form.prototype.isLoading = function isLoading(name) {
         if (name) {
-            return this._cache[name].status === false && this._cache[name].loading === true;
+            return this._result[name] === 2;
         }
-        return this._find(this._cache, function (result) {
-            return result.status === false && result.loading === true;
+        return this._some(this._result, function (result) {
+            return result === 2;
         });
     };
     /**
@@ -269,10 +284,10 @@ var Form = function () {
 
     Form.prototype.isPass = function isPass(name) {
         if (name) {
-            return this._cache[name].status === true;
+            return this._result[name] === 1;
         }
-        return this._every(this._cache, function (result) {
-            return result.status === true;
+        return this._every(this._result, function (result) {
+            return result === 1;
         });
     };
     /**
@@ -308,7 +323,8 @@ var Form = function () {
 
 
     Form.prototype.on = function on(eventName) {
-        var _ref2;
+        var _ref2,
+            _this3 = this;
 
         var name = arguments.length <= 1 ? undefined : arguments[1],
             callback = (_ref2 = (arguments.length <= 1 ? 0 : arguments.length - 1) - 1 + 1, arguments.length <= _ref2 ? undefined : arguments[_ref2]);
@@ -318,13 +334,17 @@ var Form = function () {
         if (typeof callback !== 'function') {
             return;
         }
-        if (!this._events[eventName]) {
-            this._events[eventName] = {};
-        }
-        if (!this._events[eventName][name]) {
-            this._events[eventName][name] = [];
-        }
-        this._events[eventName][name].push(callback);
+        eventName.split(' ').forEach(function (eventName) {
+            if (!_this3._events[eventName]) {
+                _this3._events[eventName] = {};
+            }
+            name.split(' ').forEach(function (name) {
+                if (!_this3._events[eventName][name]) {
+                    _this3._events[eventName][name] = [];
+                }
+                _this3._events[eventName][name].push(callback);
+            });
+        });
         return this;
     };
     /**
@@ -367,7 +387,7 @@ var Form = function () {
 
     Form.prototype._getCache = function _getCache(name, value, rule) {
         var hashCode = this._getCacheCode(name, value, rule);
-        if (this._cache[hashCode] && this._cache[hashCode].loading !== true) {
+        if (this._cache[hashCode]) {
             return this._cache[hashCode];
         } else {
             return {};
@@ -402,7 +422,7 @@ var Form = function () {
     };
 
     Form.prototype._getRule = function _getRule() {
-        var _this3 = this;
+        var _this4 = this;
 
         var rule = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '';
 
@@ -430,7 +450,7 @@ var Form = function () {
                         _rule.length = length;
                     }
                 }
-            } else if (_this3.options.rules[n]) {
+            } else if (_this4.options.rules[n]) {
                 if (!_rule.type) {
                     _rule.type = [];
                 }
@@ -451,14 +471,20 @@ var Form = function () {
     Form.prototype._triggerEvent = function _triggerEvent(eventType, name, value) {
         if (this._events[eventType]) {
             if (this._events[eventType][name]) {
-                this._events[eventType][name](value, eventType, name);
-                this._events[eventType][EVENT_ALL](value, eventType, name);
+                this._events[eventType][name].forEach(function (func) {
+                    return func(value, eventType, name);
+                });
+            }
+            if (this._events[eventType][EVENT_ALL]) {
+                this._events[eventType][EVENT_ALL].forEach(function (func) {
+                    return func(value, eventType, name);
+                });
             }
         }
     };
 
-    Form.prototype._find = function _find(array, callback) {
-        return _.find(array, callback);
+    Form.prototype._some = function _some(array, callback) {
+        return _.some(array, callback);
     };
 
     Form.prototype._every = function _every(array, callback) {
@@ -500,6 +526,7 @@ var JForm = function () {
             fieldClass: 'J_form-field',
             containerClass: 'J_form-container',
             msgClass: 'J_form-msg',
+            msgErrorClass: 'is-error',
             errorClass: 'form-error',
             nullError: false,
             callback: null,
@@ -529,22 +556,25 @@ var JForm = function () {
             var allPass = true,
                 data = {};
             results.forEach(function (result) {
-                _this2.setError(result);
+                _this2._setError(result, true);
                 if (result.status === true) {
                     data[result.name] = result.value;
                 } else {
                     allPass = false;
                 }
             });
+            if (callback && callback(data, allPass) === false) {
+                return;
+            }
             if (allPass) {
-                if (callback) {
-                    callback(data);
-                } else {
-                    _this2.options.callback && _this2.options.callback(data);
-                }
+                _this2.options.callback && _this2.options.callback(data);
             }
         });
         return this;
+    };
+
+    JForm.prototype.setError = function setError(name, msg) {
+        return this._setError({ status: false, name: name, msg: msg, value: this.getFieldValue(name) });
     };
     /**
      * 根据验证结果，向某个字段写入显示状态
@@ -553,7 +583,7 @@ var JForm = function () {
      * */
 
 
-    JForm.prototype.setError = function setError(result) {
+    JForm.prototype._setError = function _setError(result, fromSubmit) {
         var $outer = this.$el.find('.' + this.options.containerClass + '_' + result.name),
             $msg = this.$el.find('.' + this.options.msgClass + '_' + result.name),
             $field = this.$el.find('.' + this.options.fieldClass + '[name="' + result.name + '"]'),
@@ -561,12 +591,12 @@ var JForm = function () {
         if ($outer.length == 0) {
             $outer = $field;
         }
-        if (result.status === true || !this.options.nullError && this._form._isEmpty(result.value)) {
+        if (result.status === true || !fromSubmit && !this.options.nullError && this._form._isEmpty(result.value)) {
             $outer.removeClass(this.options.errorClass);
-            $msg.html('');
+            $msg.removeClass(this.options.msgErrorClass).html('');
         } else {
             $outer.addClass(this.options.errorClass);
-            $msg.html(result.msg.replace('%s', label || '该字段'));
+            $msg.addClass(this.options.msgErrorClass).html(result.msg.replace('%s', label || '该字段'));
         }
         return this;
     };
@@ -633,31 +663,87 @@ var JForm = function () {
         return this._form.getValidateResult(name, value, rule);
     };
 
+    JForm.prototype.getFieldValue = function getFieldValue(name) {
+        return this._getTargetValue(this.$el.find('.' + this.options.fieldClass + '[name="' + name + '"]'));
+    };
+
+    JForm.prototype.setFieldValue = function setFieldValue(name, value) {
+        this._setTargetValue(this.$el.find('.' + this.options.fieldClass + '[name="' + name + '"]'), value);
+        return this;
+    };
+
+    JForm.prototype.setFormData = function setFormData(data) {
+        var _this3 = this;
+
+        _.each(data, function (value, name) {
+            return _this3.setFieldValue(name, value);
+        });
+        return this;
+    };
+
+    JForm.prototype.clear = function clear(name) {
+        if (name) {
+            this._form.clearFieldCache(name);
+        } else {
+            this._form.clearAllCache();
+        }
+    };
+
     JForm.prototype._setTargetValue = function _setTargetValue(target, value) {
-        var $target = target;
-        $target.val(value);
+        var _this4 = this;
+
+        var $target = $(target),
+            name = $target.attr('name');
+        if ($target.is('[data-value]') || $target.data('value') !== undefined || $target.is('div')) {
+            $target.data('value', value).trigger('setFormData', value);
+        } else if ($target.is('input:checkbox')) {
+            if (!Array.isArray(value)) {
+                value = [value];
+            }
+            this.$el.find(_.map(value, function (itemValue) {
+                return '.' + _this4.options.fieldClass + '[name="' + name + '"][value="' + itemValue + '"]';
+            }).join(',')).prop('checked', true);
+        } else if ($target.is('input:radio')) {
+            this.$el.find('.' + this.options.fieldClass + '[name="' + name + '"][value="' + value + '"]:eq(0)').prop('checked', true);
+        } else if ($target.is('select')) {
+            $target.children('option[value="' + value + '"]').prop('selected', true);
+        } else {
+            $target.val(value);
+        }
+        return this;
     };
 
     JForm.prototype._getTargetValue = function _getTargetValue(target) {
-        var $target = $(target);
+        var $target = $(target),
+            name = $target.attr('name');
+        if ($target.is('[data-value]') || $target.data('value') !== undefined || $target.is('div')) {
+            return $target.data('value');
+        } else if ($target.is('input:checkbox')) {
+            return _.map(this.$el.find('.' + this.options.fieldClass + '[name="' + name + '"]:checked'), function (item) {
+                return $(item).attr('value');
+            });
+        } else if ($target.is('input:radio')) {
+            return this.$el.find('.' + this.options.fieldClass + '[name="' + name + '"]:checked').attr('value');
+        }
         return $target.val();
     };
 
     JForm.prototype._bindEvent = function _bindEvent() {
         var _this = this;
-        this.$el.on('blur dataChange', '.' + this.options.fieldClass, function () {
+        var triggerValidate = function triggerValidate() {
             _this.validate(this).then(function (result) {
-                _this.setError(result);
+                _this._setError(result);
             });
-        }).on('input', '.' + this.options.fieldClass, _.debounce(function () {
+        };
+        this.$el.on('blur dataChange', '.' + this.options.fieldClass, triggerValidate).on('input', '.' + this.options.fieldClass, _.debounce(function () {
             var res = _this.validate(this);
             if (_this.options.realTimeError) {
                 res.then(function (result) {
-                    _this.setError(result);
+                    _this._setError(result);
                 });
             }
-        }, this.options.delayTime)).on('focus', '.' + this.options.fieldClass, function () {
-            _this.setError({
+        }, this.options.delayTime)).on('change', '.' + this.options.fieldClass + '[type="checkbox"],.' + this.options.fieldClass + '[type="radio"],.' + this.options.fieldClass + '[type="select"]', triggerValidate).on('focus', '.' + this.options.fieldClass, function () {
+            _this._setError({
                 status: true,
                 name: $(this).attr('name')
             });

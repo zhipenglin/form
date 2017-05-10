@@ -27,6 +27,7 @@ class JForm {
             fieldClass:'J_form-field',
             containerClass:'J_form-container',
             msgClass:'J_form-msg',
+            msgErrorClass:'is-error',
             errorClass:'form-error',
             nullError:false,
             callback:null,
@@ -51,29 +52,31 @@ class JForm {
         })).then((results)=>{
             var allPass=true,data={};
             results.forEach((result)=>{
-                this.setError(result);
+                this._setError(result,true);
                 if(result.status===true){
                     data[result.name]=result.value;
                 }else{
                     allPass=false;
                 }
             });
+            if(callback&&callback(data,allPass)===false){
+                return;
+            }
             if(allPass){
-                if(callback){
-                    callback(data);
-                }else{
-                    this.options.callback&&this.options.callback(data);
-                }
+                this.options.callback&&this.options.callback(data);
             }
         });
         return this;
+    }
+    setError(name,msg){
+        return this._setError({status:false,name,msg,value:this.getFieldValue(name)});
     }
     /**
      * 根据验证结果，向某个字段写入显示状态
      * @param {Object} result 验证结果对象
      * @return {JForm} JForm对象
      * */
-    setError(result){
+    _setError(result,fromSubmit){
         var $outer=this.$el.find(`.${this.options.containerClass}_${result.name}`),
             $msg=this.$el.find(`.${this.options.msgClass}_${result.name}`),
             $field=this.$el.find(`.${this.options.fieldClass}[name="${result.name}"]`),
@@ -81,12 +84,12 @@ class JForm {
         if($outer.length==0){
             $outer=$field;
         }
-        if(result.status===true||(!this.options.nullError&&this._form._isEmpty(result.value))){
+        if(result.status===true||(!fromSubmit&&!this.options.nullError&&this._form._isEmpty(result.value))){
             $outer.removeClass(this.options.errorClass);
-            $msg.html('');
+            $msg.removeClass(this.options.msgErrorClass).html('');
         }else{
             $outer.addClass(this.options.errorClass);
-            $msg.html(result.msg.replace('%s',label||'该字段'));
+            $msg.addClass(this.options.msgErrorClass).html(result.msg.replace('%s',label||'该字段'));
         }
         return this;
     }
@@ -134,33 +137,76 @@ class JForm {
         var name=$target.attr('name'),value=this._getTargetValue(target),rule=$target.attr('rule');
         return this._form.getValidateResult(name,value,rule);
     }
+    getFieldValue(name){
+        return this._getTargetValue(this.$el.find(`.${this.options.fieldClass}[name="${name}"]`));
+    }
+    setFieldValue(name,value){
+        this._setTargetValue(this.$el.find(`.${this.options.fieldClass}[name="${name}"]`),value);
+        return this;
+    }
+    setFormData(data){
+        _.each(data,(value,name)=>this.setFieldValue(name,value));
+        return this;
+    }
+    clear(name){
+        if(name){
+            this._form.clearFieldCache(name);
+        }else{
+            this._form.clearAllCache();
+        }
+    }
     _setTargetValue(target,value){
-        var $target=target;
-        $target.val(value);
+        var $target=$(target),name=$target.attr('name');
+        if($target.is('[data-value]')||$target.data('value')!==undefined||$target.is('div')){
+            $target.data('value',value).trigger('setFormData',value);
+        }else if($target.is('input:checkbox')){
+            if(!Array.isArray(value)){
+                value=[value];
+            }
+            this.$el.find(_.map(value,(itemValue)=>`.${this.options.fieldClass}[name="${name}"][value="${itemValue}"]`).join(',')).prop('checked',true);
+        }else if($target.is('input:radio')){
+            this.$el.find(`.${this.options.fieldClass}[name="${name}"][value="${value}"]:eq(0)`).prop('checked',true);
+        }else if($target.is('select')){
+            $target.children(`option[value="${value}"]`).prop('selected',true);
+        }else{
+            $target.val(value);
+        }
+        return this;
     }
     _getTargetValue(target){
-        var $target=$(target);
+        var $target=$(target),name=$target.attr('name');
+        if($target.is('[data-value]')||$target.data('value')!==undefined||$target.is('div')){
+            return $target.data('value');
+        }else if($target.is('input:checkbox')){
+            return _.map(this.$el.find(`.${this.options.fieldClass}[name="${name}"]:checked`),(item)=>$(item).attr('value'));
+        }else if($target.is('input:radio')){
+            return this.$el.find(`.${this.options.fieldClass}[name="${name}"]:checked`).attr('value');
+        }
         return $target.val();
     }
     _bindEvent(){
         var _this=this;
-        this.$el.on('blur dataChange',`.${this.options.fieldClass}`,function(){
+        var triggerValidate=function(){
             _this.validate(this).then(function(result){
-                _this.setError(result);
+                _this._setError(result);
             });
-        }).on('input',`.${this.options.fieldClass}`,_.debounce(function(){
-            var res=_this.validate(this);
-            if(_this.options.realTimeError){
+        };
+        this.$el.on('blur dataChange',`.${this.options.fieldClass}`,triggerValidate)
+            .on('input',`.${this.options.fieldClass}`,_.debounce(function(){
+                    var res=_this.validate(this);
+                    if(_this.options.realTimeError){
                 res.then(function(result){
-                    _this.setError(result);
+                    _this._setError(result);
                 });
             }
-        },this.options.delayTime)).on('focus',`.${this.options.fieldClass}`,function(){
-            _this.setError({
-                status:true,
-                name:$(this).attr('name')
+                },this.options.delayTime))
+            .on('change',`.${this.options.fieldClass}[type="checkbox"],.${this.options.fieldClass}[type="radio"],.${this.options.fieldClass}[type="select"]`,triggerValidate)
+            .on('focus',`.${this.options.fieldClass}`,function(){
+                _this._setError({
+                    status:true,
+                    name:$(this).attr('name')
+                });
             });
-        });
     }
 }
 
