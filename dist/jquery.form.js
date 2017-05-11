@@ -96,6 +96,7 @@ var Form = function () {
         /**
          * 用来存储验证结果
          * 1为已通过 2为正在校验 3为校验失败
+         * @private
          * */
         this._result = {};
         /**
@@ -147,7 +148,10 @@ var Form = function () {
                     _this._triggerEvent('loading', name, value);
                 }
             } else {
-                var _cache = { status: result.status, name: name, value: value, msg: result.msg, rule: ruleStr };
+                var _cache = { status: result.status, name: name, value: value, rule: ruleStr };
+                if (_cache.status === false && result.msg) {
+                    _cache.msg = result.msg;
+                }
                 _this._setCache(_cache);
                 if (result.status === true) {
                     _this._result[name] = 1;
@@ -160,7 +164,7 @@ var Form = function () {
             }
         };
         //空性判断
-        if (this._isEmpty(value)) {
+        if (this.isEmpty(value)) {
             if (rule.req) {
                 return returnResult({ status: false, msg: this.options.reqErrorTemp });
             } else {
@@ -289,6 +293,16 @@ var Form = function () {
         return this._every(this._result, function (result) {
             return result === 1;
         });
+    };
+    /**
+     * 判断当前值是不是满足表单空值判断
+     * @param {Anything} value  输入值
+     * @return {bool} 是否为空
+     * */
+
+
+    Form.prototype.isEmpty = function isEmpty(value) {
+        return value === undefined || value === null || value === '' || value.length == 0 || this._isEmptyObject(value);
     };
     /**
      * 清除当前字段有关的验证缓存
@@ -460,14 +474,6 @@ var Form = function () {
         return this._ruleCache[rule] = _rule;
     };
 
-    Form.prototype._isEmpty = function _isEmpty(value) {
-        return value === undefined || value === null || value === '' || value.length == 0 || this._isEmptyObject(value);
-    };
-
-    Form.prototype._isEmptyObject = function _isEmptyObject(value) {
-        return _.isObject(value) && _.isEmpty(value);
-    };
-
     Form.prototype._triggerEvent = function _triggerEvent(eventType, name, value) {
         if (this._events[eventType]) {
             if (this._events[eventType][name]) {
@@ -481,6 +487,10 @@ var Form = function () {
                 });
             }
         }
+    };
+
+    Form.prototype._isEmptyObject = function _isEmptyObject(value) {
+        return _.isObject(value) && _.isEmpty(value);
     };
 
     Form.prototype._some = function _some(array, callback) {
@@ -542,15 +552,15 @@ var JForm = function () {
     }
     /**
      * 提交表单，如果有没有验证的字段则进行校验，所有字段均被校验并且全部都验证通过后执行options.callback，如果callback参数存在则执行callback，不执行options.callback
-     * @param {function} callback 所有字段验证通过后调用该方法
-     * @return {JForm} JForm对象
+     * @param {function} callback 所有字段验证通过后调用该方法，如果该方法返回值为false，则放弃执行options.callback方法
+     * @return {Promise} Promise对象，在then中可以传入验证全部结束回调
      * */
 
 
     JForm.prototype.submit = function submit(callback) {
         var _this2 = this;
 
-        Promise.all([].map.call(this.$el.find('.' + this.options.fieldClass), function (target) {
+        return Promise.all([].map.call(this.$el.find('.' + this.options.fieldClass), function (target) {
             return _this2.validate(target);
         })).then(function (results) {
             var allPass = true,
@@ -563,41 +573,24 @@ var JForm = function () {
                     allPass = false;
                 }
             });
-            if (callback && callback(data, allPass) === false) {
-                return;
-            }
             if (allPass) {
-                _this2.options.callback && _this2.options.callback(data);
+                if (!(callback && callback(data) === false)) {
+                    _this2.options.callback && _this2.options.callback(data);
+                }
             }
+            return { pass: allPass, data: data };
         });
-        return this;
-    };
-
-    JForm.prototype.setError = function setError(name, msg) {
-        return this._setError({ status: false, name: name, msg: msg, value: this.getFieldValue(name) });
     };
     /**
-     * 根据验证结果，向某个字段写入显示状态
-     * @param {Object} result 验证结果对象
+     * 向某个字段错误状态和信息
+     * @param {name} 字段名
+     * @param {msg} 错误信息
      * @return {JForm} JForm对象
      * */
 
 
-    JForm.prototype._setError = function _setError(result, fromSubmit) {
-        var $outer = this.$el.find('.' + this.options.containerClass + '_' + result.name),
-            $msg = this.$el.find('.' + this.options.msgClass + '_' + result.name),
-            $field = this.$el.find('.' + this.options.fieldClass + '[name="' + result.name + '"]'),
-            label = $field.attr('label');
-        if ($outer.length == 0) {
-            $outer = $field;
-        }
-        if (result.status === true || !fromSubmit && !this.options.nullError && this._form._isEmpty(result.value)) {
-            $outer.removeClass(this.options.errorClass);
-            $msg.removeClass(this.options.msgErrorClass).html('');
-        } else {
-            $outer.addClass(this.options.errorClass);
-            $msg.addClass(this.options.msgErrorClass).html(result.msg.replace('%s', label || '该字段'));
-        }
+    JForm.prototype.setError = function setError(name, msg) {
+        this._setError({ status: false, name: name, msg: msg, value: this.getFieldValue(name) });
         return this;
     };
     /**
@@ -662,15 +655,34 @@ var JForm = function () {
             rule = $target.attr('rule');
         return this._form.getValidateResult(name, value, rule);
     };
+    /**
+     * 获取某个字段当前的值
+     * @param {string} name 字段名
+     * @reutrn {Anything} 字段当前值
+     * */
+
 
     JForm.prototype.getFieldValue = function getFieldValue(name) {
         return this._getTargetValue(this.$el.find('.' + this.options.fieldClass + '[name="' + name + '"]'));
     };
+    /**
+     * 给表单中的某个字段赋值
+     * @param {string} name 字段名
+     * @param {Anything} value  字段的值
+     * @return {JForm} JForm对象
+     * */
+
 
     JForm.prototype.setFieldValue = function setFieldValue(name, value) {
         this._setTargetValue(this.$el.find('.' + this.options.fieldClass + '[name="' + name + '"]'), value);
         return this;
     };
+    /**
+     * 给整个表单赋值
+     * @param {Object} data 表单值
+     * @return {JForm} JForm对象
+     * */
+
 
     JForm.prototype.setFormData = function setFormData(data) {
         var _this3 = this;
@@ -680,6 +692,12 @@ var JForm = function () {
         });
         return this;
     };
+    /**
+     * 清除表单校验缓存
+     * @param {string} 表单值
+     * @return {JForm} JForm对象
+     * */
+
 
     JForm.prototype.clear = function clear(name) {
         if (name) {
@@ -687,6 +705,24 @@ var JForm = function () {
         } else {
             this._form.clearAllCache();
         }
+    };
+
+    JForm.prototype._setError = function _setError(result, fromSubmit) {
+        var $outer = this.$el.find('.' + this.options.containerClass + '_' + result.name),
+            $msg = this.$el.find('.' + this.options.msgClass + '_' + result.name),
+            $field = this.$el.find('.' + this.options.fieldClass + '[name="' + result.name + '"]'),
+            label = $field.attr('label');
+        if ($outer.length == 0) {
+            $outer = $field;
+        }
+        if (result.status === true || !fromSubmit && !this.options.nullError && this._form.isEmpty(result.value)) {
+            $outer.removeClass(this.options.errorClass);
+            $msg.removeClass(this.options.msgErrorClass).html('');
+        } else {
+            $outer.addClass(this.options.errorClass);
+            $msg.addClass(this.options.msgErrorClass).html(result.msg.replace('%s', label || '该字段'));
+        }
+        return this;
     };
 
     JForm.prototype._setTargetValue = function _setTargetValue(target, value) {

@@ -22,7 +22,7 @@
 <label for="nav-trigger" class="overlay"></label>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Form.html">Form</a><ul class='methods'><li data-type='method'><a href="Form.html#clearAllCache">clearAllCache</a></li><li data-type='method'><a href="Form.html#clearFieldCache">clearFieldCache</a></li><li data-type='method'><a href="Form.html#getFormValidateResult">getFormValidateResult</a></li><li data-type='method'><a href="Form.html#getValidateResult">getValidateResult</a></li><li data-type='method'><a href="Form.html#isError">isError</a></li><li data-type='method'><a href="Form.html#isLoading">isLoading</a></li><li data-type='method'><a href="Form.html#isPass">isPass</a></li><li data-type='method'><a href="Form.html#off">off</a></li><li data-type='method'><a href="Form.html#on">on</a></li><li data-type='method'><a href="Form.html#use">use</a></li></ul></li><li><a href="JForm.html">JForm</a><ul class='methods'><li data-type='method'><a href="JForm.html#isError">isError</a></li><li data-type='method'><a href="JForm.html#isLoading">isLoading</a></li><li data-type='method'><a href="JForm.html#isPass">isPass</a></li><li data-type='method'><a href="JForm.html#on">on</a></li><li data-type='method'><a href="JForm.html#setError">setError</a></li><li data-type='method'><a href="JForm.html#submit">submit</a></li><li data-type='method'><a href="JForm.html#use">use</a></li><li data-type='method'><a href="JForm.html#validate">validate</a></li></ul></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Form.html">Form</a><ul class='methods'><li data-type='method'><a href="Form.html#clearAllCache">clearAllCache</a></li><li data-type='method'><a href="Form.html#clearFieldCache">clearFieldCache</a></li><li data-type='method'><a href="Form.html#getFormValidateResult">getFormValidateResult</a></li><li data-type='method'><a href="Form.html#getValidateResult">getValidateResult</a></li><li data-type='method'><a href="Form.html#isEmpty">isEmpty</a></li><li data-type='method'><a href="Form.html#isError">isError</a></li><li data-type='method'><a href="Form.html#isLoading">isLoading</a></li><li data-type='method'><a href="Form.html#isPass">isPass</a></li><li data-type='method'><a href="Form.html#off">off</a></li><li data-type='method'><a href="Form.html#on">on</a></li><li data-type='method'><a href="Form.html#use">use</a></li></ul></li><li><a href="JForm.html">JForm</a><ul class='methods'><li data-type='method'><a href="JForm.html#clear">clear</a></li><li data-type='method'><a href="JForm.html#getFieldValue">getFieldValue</a></li><li data-type='method'><a href="JForm.html#isError">isError</a></li><li data-type='method'><a href="JForm.html#isLoading">isLoading</a></li><li data-type='method'><a href="JForm.html#isPass">isPass</a></li><li data-type='method'><a href="JForm.html#on">on</a></li><li data-type='method'><a href="JForm.html#setError">setError</a></li><li data-type='method'><a href="JForm.html#setFieldValue">setFieldValue</a></li><li data-type='method'><a href="JForm.html#setFormData">setFormData</a></li><li data-type='method'><a href="JForm.html#submit">submit</a></li><li data-type='method'><a href="JForm.html#use">use</a></li><li data-type='method'><a href="JForm.html#validate">validate</a></li></ul></li></ul>
 </nav>
 
 <div id="main">
@@ -53,7 +53,7 @@ const RULES={
         des:'请输入6-20位数字/字母'
     }
 };
-const EVENT_ALL=263;
+const EVENT_ALL='all_event_263';
 
 /**
  * 表单验证的主要逻辑
@@ -101,6 +101,12 @@ class Form{
          * */
         this._cache={};
         /**
+         * 用来存储验证结果
+         * 1为已通过 2为正在校验 3为校验失败
+         * @private
+         * */
+        this._result={};
+        /**
          * 用来缓存校验规则的解析结果
          * @private
          * */
@@ -137,21 +143,31 @@ class Form{
             return Promise.resolve(cache);
         }
         var returnResult=(result)=>{
-            result.name=name;
-            result.value=value;
-            result.rule=ruleStr;
-            this._setCache(result);
-            if(result.status===true){
-                this._triggerEvent('pass', name, value);
-            }else if(result.status===false&amp;&amp;result.loading===true){
-                this._triggerEvent('loading', name, value);
+            if(result.loading===true){
+                if(result.status===true){
+                    this._triggerEvent('loaded', name, value);
+                }else{
+                    this._result[name]=2;
+                    this._triggerEvent('loading', name, value);
+                }
             }else{
-                this._triggerEvent('error', name, value);
+                let cache={status:result.status,name,value,rule:ruleStr};
+                if(cache.status===false&amp;&amp;result.msg){
+                    cache.msg=result.msg;
+                }
+                this._setCache(cache);
+                if(result.status===true){
+                    this._result[name]=1;
+                    this._triggerEvent('pass', name, value);
+                }else{
+                    this._result[name]=3;
+                    this._triggerEvent('error', name, value);
+                }
+                return Promise.resolve(cache);
             }
-            return Promise.resolve(result);
         };
         //空性判断
-        if(this._isEmpty(value)){
+        if(this.isEmpty(value)){
             if(rule.req){
                 return returnResult({status:false,msg:this.options.reqErrorTemp});
             }else{
@@ -201,6 +217,9 @@ class Form{
                 return returnResult({status:true});
             },(result)=>{
                 return returnResult(result);
+            }).then((result)=>{
+                returnResult({status:true,loading:true});
+                return result;
             });
         }else{
             return returnResult({status:true});
@@ -223,9 +242,9 @@ class Form{
      * */
     isError(name){
         if(name){
-            return this._cache[name].status===false&amp;&amp;this._cache[name].loading!==true;
+            return this._result[name]===3;
         }
-        return this._find(this._cache,(result)=>result.status===false&amp;&amp;result.loading!==true);
+        return this._some(this._result,(result)=>result===3);
     }
     /**
      * 判断当前表单中是否存在正在进行远程校验，如果传入参数值name，则判断当前字段验证是否正在进行远程校验
@@ -234,9 +253,9 @@ class Form{
      * */
     isLoading(name){
         if(name){
-            return this._cache[name].status===false&amp;&amp;this._cache[name].loading===true;
+            return this._result[name]===2;
         }
-        return this._find(this._cache,(result)=>result.status===false&amp;&amp;result.loading===true);
+        return this._some(this._result,(result)=>result===2);
     }
     /**
      * 判断当前表单中的全部字段是否全都验证通过，如果传入参数值name，则判断当前字段验证是否验证通过
@@ -245,9 +264,17 @@ class Form{
      * */
     isPass(name){
         if(name){
-            return this._cache[name].status===true;
+            return this._result[name]===1;
         }
-        return this._every(this._cache,(result)=>result.status===true);
+        return this._every(this._result,(result)=>result===1);
+    }
+    /**
+     * 判断当前值是不是满足表单空值判断
+     * @param {Anything} value  输入值
+     * @return {bool} 是否为空
+     * */
+    isEmpty(value){
+        return value===undefined||value===null||value===''||value.length==0||this._isEmptyObject(value);
     }
     /**
      * 清除当前字段有关的验证缓存
@@ -283,13 +310,17 @@ class Form{
         if(typeof callback!=='function'){
             return;
         }
-        if(!this._events[eventName]){
-            this._events[eventName]={};
-        }
-        if(!this._events[eventName][name]){
-            this._events[eventName][name]=[];
-        }
-        this._events[eventName][name].push(callback);
+        eventName.split(' ').forEach((eventName)=>{
+            if(!this._events[eventName]){
+                this._events[eventName]={};
+            }
+            name.split(' ').forEach((name)=>{
+                if(!this._events[eventName][name]){
+                    this._events[eventName][name]=[];
+                }
+                this._events[eventName][name].push(callback);
+            });
+        });
         return this;
     }
     /**
@@ -327,7 +358,7 @@ class Form{
     }
     _getCache(name,value,rule){
         var hashCode=this._getCacheCode(name,value,rule);
-        if(this._cache[hashCode]&amp;&amp;this._cache[hashCode].loading!==true){
+        if(this._cache[hashCode]){
             return this._cache[hashCode];
         }else{
             return {};
@@ -386,22 +417,23 @@ class Form{
         });
         return this._ruleCache[rule]=_rule;
     }
-    _isEmpty(value){
-        return value===undefined||value===null||value===''||value.length==0||this._isEmptyObject(value);
-    }
-    _isEmptyObject(value) {
-        return _.isObject(value)&amp;&amp;_.isEmpty(value);
-    }
     _triggerEvent(eventType,name,value){
         if(this._events[eventType]){
             if(this._events[eventType][name]){
-                this._events[eventType][name](value,eventType,name);
-                this._events[eventType][EVENT_ALL](value,eventType,name);
+                this._events[eventType][name].forEach((func)=>func(value,eventType,name));
+            }
+            if(this._events[eventType][EVENT_ALL]){
+                this._events[eventType][EVENT_ALL].forEach((func)=>func(value,eventType,name));
             }
         }
     }
-    _find(array,callback){
-       return _.find(array,callback);
+
+
+    _isEmptyObject(value) {
+        return _.isObject(value)&amp;&amp;_.isEmpty(value);
+    }
+    _some(array,callback){
+       return _.some(array,callback);
     }
     _every(array,callback){
         return _.every(array,callback);
@@ -423,7 +455,7 @@ export default Form;</code></pre>
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> on Tue May 09 2017 15:47:14 GMT+0800 (CST) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> on Thu May 11 2017 11:24:19 GMT+0800 (CST) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>

@@ -64,6 +64,7 @@ class Form{
         /**
          * 用来存储验证结果
          * 1为已通过 2为正在校验 3为校验失败
+         * @private
          * */
         this._result={};
         /**
@@ -111,7 +112,10 @@ class Form{
                     this._triggerEvent('loading', name, value);
                 }
             }else{
-                let cache={status:result.status,name,value,msg:result.msg,rule:ruleStr};
+                let cache={status:result.status,name,value,rule:ruleStr};
+                if(cache.status===false&&result.msg){
+                    cache.msg=result.msg;
+                }
                 this._setCache(cache);
                 if(result.status===true){
                     this._result[name]=1;
@@ -124,7 +128,7 @@ class Form{
             }
         };
         //空性判断
-        if(this._isEmpty(value)){
+        if(this.isEmpty(value)){
             if(rule.req){
                 return returnResult({status:false,msg:this.options.reqErrorTemp});
             }else{
@@ -224,6 +228,14 @@ class Form{
             return this._result[name]===1;
         }
         return this._every(this._result,(result)=>result===1);
+    }
+    /**
+     * 判断当前值是不是满足表单空值判断
+     * @param {Anything} value  输入值
+     * @return {bool} 是否为空
+     * */
+    isEmpty(value){
+        return value===undefined||value===null||value===''||value.length==0||this._isEmptyObject(value);
     }
     /**
      * 清除当前字段有关的验证缓存
@@ -366,12 +378,6 @@ class Form{
         });
         return this._ruleCache[rule]=_rule;
     }
-    _isEmpty(value){
-        return value===undefined||value===null||value===''||value.length==0||this._isEmptyObject(value);
-    }
-    _isEmptyObject(value) {
-        return _.isObject(value)&&_.isEmpty(value);
-    }
     _triggerEvent(eventType,name,value){
         if(this._events[eventType]){
             if(this._events[eventType][name]){
@@ -381,6 +387,11 @@ class Form{
                 this._events[eventType][EVENT_ALL].forEach((func)=>func(value,eventType,name));
             }
         }
+    }
+
+
+    _isEmptyObject(value) {
+        return _.isObject(value)&&_.isEmpty(value);
     }
     _some(array,callback){
        return _.some(array,callback);
