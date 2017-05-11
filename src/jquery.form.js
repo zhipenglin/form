@@ -150,7 +150,7 @@ class JForm {
     }
     /**
      * 清除表单校验缓存
-     * @param {string} 表单值
+     * @param {string} name 表单值（可选）当没有传入name时，清除整个表单缓存，当传入name时只清除该字段的缓存
      * @return {JForm} JForm对象
      * */
     clear(name){
